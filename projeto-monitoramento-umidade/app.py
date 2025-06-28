@@ -3,31 +3,58 @@ import pandas as pd
 import random
 import time
 
+# Configuração da página
 st.set_page_config(page_title="Monitoramento Ambiental", layout="centered")
 
-st.title("📊 Monitoramento de Umidade - Escola Vivendo e Aprendendo")
-st.markdown("Local: 604 Norte, Brasília - DF")
-st.markdown("Coordenadas: **Latitude: -15.7833, Longitude: -47.9167**")
+# Cabeçalho
+st.title("🌦️ Monitoramento Ambiental em Tempo Real")
+st.markdown("📍 **Local:** Escola Vivendo e Aprendendo - 604 Norte, Brasília - DF")
+st.markdown("🗺️ **Coordenadas:** -15.7833, -47.9167")
 
-# Simula leituras de umidade
-def gerar_umidade():
-    return round(random.uniform(20, 60), 2)
+# Atualização automática a cada 10 segundos
+st_autorefresh = st.experimental_rerun if "autorefresh" in st.session_state else st.experimental_rerun
+st_autorefresh = st.experimental_data_editor if "autorefresh" in st.session_state else st.experimental_data_editor
 
-# Dados simulados
-if 'umidades' not in st.session_state:
-    st.session_state.umidades = []
+# Inicializa os dados na sessão
+if 'dados' not in st.session_state:
+    st.session_state.dados = pd.DataFrame(columns=["Tempo", "Umidade", "Temperatura", "Sensação Térmica", "Vento", "Precipitação"])
 
-umidade_atual = gerar_umidade()
-st.session_state.umidades.append(umidade_atual)
+# Função para simular dados ambientais
+def gerar_dados():
+    tempo = time.strftime("%H:%M:%S")
+    umidade = round(random.uniform(20, 60), 2)
+    temperatura = round(random.uniform(20, 35), 1)
+    sensacao = temperatura + random.uniform(-2, 2)
+    vento = round(random.uniform(0, 15), 1)
+    precipitacao = round(random.uniform(0, 10), 2)
+    return {
+        "Tempo": tempo,
+        "Umidade": umidade,
+        "Temperatura": temperatura,
+        "Sensação Térmica": round(sensacao, 1),
+        "Vento": vento,
+        "Precipitação": precipitacao
+    }
 
-# Mostrar a leitura atual
-st.metric("Umidade Atual", f"{umidade_atual}%")
+# Adiciona nova linha aos dados
+novo_dado = gerar_dados()
+st.session_state.dados = pd.concat([st.session_state.dados, pd.DataFrame([novo_dado])], ignore_index=True)
 
-# Verificação de risco
-if umidade_atual < 30:
-    st.error("⚠️ Atenção: Nível de umidade muito baixo! Risco à saúde!")
+# Exibir métricas
+col1, col2, col3 = st.columns(3)
+col1.metric("🌡️ Temperatura", f"{novo_dado['Temperatura']}°C")
+col2.metric("💧 Umidade", f"{novo_dado['Umidade']}%")
+col3.metric("🌬️ Vento", f"{novo_dado['Vento']} km/h")
 
-# Mostrar gráfico
-st.line_chart(st.session_state.umidades)
+col4, col5, col6 = st.columns(3)
+col4.metric("🥵 Sensação", f"{novo_dado['Sensação Térmica']}°C")
+col5.metric("☔ Precipitação", f"{novo_dado['Precipitação']} mm")
+if novo_dado['Umidade'] < 30:
+    col6.error("⚠️ Umidade muito baixa!")
 
-st.caption("Atualize a página para nova leitura")
+# Gráficos de linha para os dados
+st.subheader("📈 Histórico Ambiental")
+st.line_chart(st.session_state.dados.set_index("Tempo"))
+
+# Atualiza automaticamente após 10 segundos
+st.experimental_rerun()
